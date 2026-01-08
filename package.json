@@ -1,5 +1,5 @@
 {
-  "name": "chipper-server",
+  "name": "kelvisanshop-server",
   "version": "1.0.0",
   "description": "Lightweight e-commerce backend server",
   "main": "dist/server.js",

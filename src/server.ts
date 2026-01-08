@@ -30,7 +30,7 @@ const startServer = async () => {
       cors: {
         origin:
           process.env.NODE_ENV === 'production'
-            ? ['https://chipper-gray.vercel.app']
+            ? ['https://kelvisanshop.vercel.app']
             : ['http://localhost:3000', 'http://localhost:3001'],
         methods: ['GET', 'POST'],
         credentials: true,
