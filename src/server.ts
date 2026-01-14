@@ -1,5 +1,3 @@
-// src/server.ts
-
 import dotenv from 'dotenv';
 import http from 'http';
 import { Server } from 'socket.io';
@@ -9,13 +7,9 @@ import { initSocket } from './sockets/socketHandler';
 import { config } from './utils/config';
 import logger from './utils/logger';
 
-// Route imports
-import { authRouter } from './routes/authRoutes';
-import cartRouter from './routes/cartRoutes';
-import { categoryRouter } from './routes/categoryRoutes';
-import orderRouter from './routes/orderRoutes'; // ← Fixed: default import
+// Socket-only routes
 import initializeProductRoutes from './routes/productRoutes';
-import reviewRouter from './routes/reviewRoutes';
+import { categoryRouter } from './routes/categoryRoutes';
 
 dotenv.config();
 
@@ -39,39 +33,16 @@ const startServer = async () => {
 
     initSocket(io);
 
+    // Socket-dependent routes ONLY
     app.use('/api/products', initializeProductRoutes(io));
     app.use('/api/categories', categoryRouter(io));
 
-    app.use('/api/cart', cartRouter);
-    app.use('/api/reviews', reviewRouter);
-    app.use('/api/orders', orderRouter);  // ← No () needed — it's already the router
-    app.use('/api/auth', authRouter());
-
     server.listen(config.PORT, () => {
       logger.info(`Server running on http://localhost:${config.PORT}`);
-      if (process.env.NODE_ENV !== 'production') {
-        logger.info(`Swagger Docs: http://localhost:${config.PORT}/api-docs`);
-      }
     });
 
-    const shutdown = (signal: string) => {
-      logger.warn(`${signal} received. Shutting down...`);
-      server.close(() => {
-        logger.info('HTTP server closed');
-        io.close(() => {
-          logger.info('Socket.IO closed');
-          process.exit(0);
-        });
-      });
-    };
-
-    process.on('SIGINT', () => shutdown('SIGINT'));
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
   } catch (error) {
-    logger.error('Failed to start server', {
-      message: (error as Error).message,
-      stack: (error as Error).stack,
-    });
+    logger.error('Failed to start server', error);
     process.exit(1);
   }
 };
