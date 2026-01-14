@@ -3,12 +3,24 @@ import cors from 'cors';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
+
 import { errorMiddleware } from './middleware/errorMiddleware';
 import { rateLimiter } from './middleware/rateLimitMiddleware';
 
+// ROUTES
+import { authRouter } from './routes/authRoutes';
+import cartRouter from './routes/cartRoutes';
+import { categoryRouter } from './routes/categoryRoutes';
+import orderRouter from './routes/orderRoutes';
+import reviewRouter from './routes/reviewRoutes';
+
 const app: Application = express();
 
-// Middleware
+/**
+ * ======================
+ * GLOBAL MIDDLEWARE
+ * ======================
+ */
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? ['https://chipper-gray.vercel.app']
@@ -20,19 +32,41 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(rateLimiter);
 
-// Static files (uploads, etc.)
+/**
+ * ======================
+ * STATIC FILES
+ * ======================
+ */
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Health check
+/**
+ * ======================
+ * HEALTH CHECK
+ * ======================
+ */
 app.get('/health', (_req, res) => {
-  res.status(200).json({ 
+  res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
   });
 });
 
-// Swagger Documentation
+/**
+ * ======================
+ * API ROUTES
+ * ======================
+ */
+app.use('/api/auth', authRouter());
+app.use('/api/cart', cartRouter);
+app.use('/api/reviews', reviewRouter);
+app.use('/api/orders', orderRouter);
+
+/**
+ * ======================
+ * SWAGGER
+ * ======================
+ */
 if (process.env.NODE_ENV !== 'production') {
   try {
     const swaggerDocument = YAML.load(path.join(__dirname, '../docs/swagger.yaml'));
@@ -42,7 +76,11 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
-// Global error handler (must be last)
+/**
+ * ======================
+ * ERROR HANDLER (LAST)
+ * ======================
+ */
 app.use(errorMiddleware);
 
 export default app;
