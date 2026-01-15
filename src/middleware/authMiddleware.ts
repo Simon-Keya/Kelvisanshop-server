@@ -5,7 +5,6 @@ import jwt from 'jsonwebtoken';
 import { config } from '../utils/config';
 import logger from '../utils/logger';
 
-// Global augmentation to extend Express Request
 declare global {
   namespace Express {
     interface Request {
@@ -17,14 +16,13 @@ declare global {
   }
 }
 
-// Define the payload type locally (fixes "Cannot find name 'JwtPayload'")
 interface JwtPayload {
   userId: number;
   role: string;
 }
 
 /**
- * Authenticate JWT token
+ * JWT authentication
  */
 export const authenticateToken = (
   req: Request,
@@ -41,24 +39,22 @@ export const authenticateToken = (
   const token = authHeader.split(' ')[1];
 
   if (!config.JWT_SECRET) {
-    logger.error('JWT_SECRET is missing in environment');
+    logger.error('JWT_SECRET missing');
     return res.status(500).json({ error: 'Server misconfiguration' });
   }
 
-  jwt.verify(token, config.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      logger.warn('Invalid or expired token', { error: err.message });
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-
-    // Properly typed assignment
-    req.user = decoded as JwtPayload;
+  try {
+    const decoded = jwt.verify(token, config.JWT_SECRET) as JwtPayload;
+    req.user = decoded;
     next();
-  });
+  } catch (err: any) {
+    logger.warn('Invalid token', { error: err.message });
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
 };
 
 /**
- * Admin-only middleware
+ * Admin-only guard
  */
 export const adminMiddleware = (
   req: Request,
@@ -77,5 +73,4 @@ export const adminMiddleware = (
   next();
 };
 
-// Backward compatibility for imports that use 'authMiddleware'
 export { authenticateToken as authMiddleware };
