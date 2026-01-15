@@ -1,5 +1,5 @@
-import express, { Application } from 'express';
 import cors from 'cors';
+import express, { Application } from 'express';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
@@ -10,7 +10,6 @@ import { rateLimiter } from './middleware/rateLimitMiddleware';
 // ROUTES
 import { authRouter } from './routes/authRoutes';
 import cartRouter from './routes/cartRoutes';
-import { categoryRouter } from './routes/categoryRoutes';
 import orderRouter from './routes/orderRoutes';
 import reviewRouter from './routes/reviewRoutes';
 
@@ -23,7 +22,7 @@ const app: Application = express();
  */
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://chipper-gray.vercel.app']
+    ? ['https://kelvisanshop.vercel.app']
     : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true,
 }));
