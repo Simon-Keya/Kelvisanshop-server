@@ -43,9 +43,9 @@ export const validateLogin = [
 ];
 
 /**
- * =============================
+ * =========================
  * REGISTER
- * =============================
+ * =========================
  */
 export const register = async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
