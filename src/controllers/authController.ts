@@ -1,5 +1,3 @@
-// src/controllers/authController.ts
-
 import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import { check } from 'express-validator';
@@ -10,41 +8,23 @@ import prisma from '../utils/prisma';
 
 /**
  * =============================
- * VALIDATION RULES
+ * VALIDATION
  * =============================
- * Role is NEVER accepted from client
  */
-
 export const validateRegister = [
-  check('username')
-    .trim()
-    .isLength({ min: 3 })
-    .withMessage('Username must be at least 3 characters'),
-
-  check('email')
-    .normalizeEmail()
-    .isEmail()
-    .withMessage('Valid email is required'),
-
-  check('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
+  check('username').trim().isLength({ min: 3 }),
+  check('email').normalizeEmail().isEmail(),
+  check('password').isLength({ min: 6 }),
 ];
 
 export const validateLogin = [
-  check('username')
-    .trim()
-    .notEmpty()
-    .withMessage('Username is required'),
-
-  check('password')
-    .notEmpty()
-    .withMessage('Password is required'),
+  check('username').trim().notEmpty(),
+  check('password').notEmpty(),
 ];
 
 /**
  * =============================
- * REGISTER (USER ONLY)
+ * REGISTER (USERS ONLY)
  * =============================
  */
 export const register = async (req: Request, res: Response) => {
@@ -52,18 +32,11 @@ export const register = async (req: Request, res: Response) => {
 
   try {
     const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [{ username }, { email }],
-      },
+      where: { OR: [{ username }, { email }] },
     });
 
     if (existingUser) {
-      return res.status(400).json({
-        error:
-          existingUser.username === username
-            ? 'Username already taken'
-            : 'Email already taken',
-      });
+      return res.status(400).json({ error: 'Username or email already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -77,16 +50,12 @@ export const register = async (req: Request, res: Response) => {
       },
     });
 
-    logger.info('User registered', { username, email });
+    logger.info('User registered', { username });
 
-    return res.status(201).json({
-      message: 'Registration successful',
-    });
-  } catch (error: any) {
-    logger.error('Registration error', { error });
-    return res.status(500).json({
-      error: 'Failed to register user',
-    });
+    return res.status(201).json({ message: 'Registration successful' });
+  } catch (error) {
+    logger.error('Registration failed', { error });
+    return res.status(500).json({ error: 'Registration failed' });
   }
 };
 
@@ -99,36 +68,25 @@ export const login = async (req: Request, res: Response) => {
   const { username, password } = req.body;
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { username },
-    });
+    const user = await prisma.user.findUnique({ where: { username } });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    if (!config.JWT_SECRET) {
-      logger.error('JWT_SECRET missing');
-      return res.status(500).json({ error: 'Server misconfiguration' });
-    }
-
     const token = jwt.sign(
-      {
-        userId: user.id,
-        role: user.role, // ✅ comes from DB
-      },
-      config.JWT_SECRET,
+      { userId: user.id, role: user.role },
+      config.JWT_SECRET!,
       { expiresIn: '24h' }
     );
 
-    logger.info('User logged in', {
+    logger.info('Login successful', {
       userId: user.id,
-      username: user.username,
       role: user.role,
     });
 
@@ -137,7 +95,7 @@ export const login = async (req: Request, res: Response) => {
       role: user.role,
     });
   } catch (error) {
-    logger.error('Login error', { error });
+    logger.error('Login failed', { error });
     return res.status(500).json({ error: 'Login failed' });
   }
 };
