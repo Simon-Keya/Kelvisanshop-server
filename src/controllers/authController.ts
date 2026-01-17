@@ -1,3 +1,5 @@
+// src/controllers/authController.ts
+
 import bcrypt from 'bcryptjs';
 import { Request, Response } from 'express';
 import { check } from 'express-validator';
@@ -10,9 +12,7 @@ import prisma from '../utils/prisma';
  * =============================
  * VALIDATION RULES
  * =============================
- * NOTE:
- * - Role is NOT accepted from client
- * - Role is enforced server-side
+ * Role is NEVER accepted from client
  */
 
 export const validateRegister = [
@@ -43,15 +43,14 @@ export const validateLogin = [
 ];
 
 /**
- * =========================
- * REGISTER
- * =========================
+ * =============================
+ * REGISTER (USER ONLY)
+ * =============================
  */
 export const register = async (req: Request, res: Response) => {
   const { username, email, password } = req.body;
 
   try {
-    // Check if user exists
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ username }, { email }],
@@ -59,9 +58,12 @@ export const register = async (req: Request, res: Response) => {
     });
 
     if (existingUser) {
-      const field = existingUser.username === username ? 'Username' : 'Email';
-      logger.warn(`${field} already taken`, { username, email });
-      return res.status(400).json({ error: `${field} already taken` });
+      return res.status(400).json({
+        error:
+          existingUser.username === username
+            ? 'Username already taken'
+            : 'Email already taken',
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -71,24 +73,17 @@ export const register = async (req: Request, res: Response) => {
         username,
         email,
         password: hashedPassword,
-        role: 'user', // 🔒 enforced server-side
+        role: 'user', // 🔒 enforced
       },
     });
 
-    logger.info('User registered successfully', { username, email });
+    logger.info('User registered', { username, email });
 
     return res.status(201).json({
       message: 'Registration successful',
     });
   } catch (error: any) {
-    // Prisma unique constraint safety
-    if (error.code === 'P2002') {
-      return res.status(400).json({
-        error: 'Username or email already exists',
-      });
-    }
-
-    logger.error('Error registering user', { error });
+    logger.error('Registration error', { error });
     return res.status(500).json({
       error: 'Failed to register user',
     });
@@ -96,9 +91,9 @@ export const register = async (req: Request, res: Response) => {
 };
 
 /**
- * ==========================
- * LOGIN
- * ==========================
+ * =============================
+ * LOGIN (USER + ADMIN)
+ * =============================
  */
 export const login = async (req: Request, res: Response) => {
   const { username, password } = req.body;
@@ -123,14 +118,24 @@ export const login = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      {
+        userId: user.id,
+        role: user.role, // ✅ comes from DB
+      },
       config.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    logger.info('User logged in', { userId: user.id });
+    logger.info('User logged in', {
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+    });
 
-    return res.status(200).json({ token });
+    return res.status(200).json({
+      token,
+      role: user.role,
+    });
   } catch (error) {
     logger.error('Login error', { error });
     return res.status(500).json({ error: 'Login failed' });
