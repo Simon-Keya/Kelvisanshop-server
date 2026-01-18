@@ -75,11 +75,7 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
-/**
- * ======================
- * ERROR HANDLER (LAST)
- * ======================
- */
+
 app.use(errorMiddleware);
 
 export default app;
